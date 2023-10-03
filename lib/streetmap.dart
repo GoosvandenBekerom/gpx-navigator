@@ -1,51 +1,40 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:flutter_map/flutter_map.dart';
 import 'package:gpx_navigator/location.dart';
 import 'package:latlong2/latlong.dart';
 
-class StreetMap extends StatefulWidget {
-  const StreetMap({super.key});
+class StreetMap extends StatelessWidget {
+  StreetMap({super.key});
+
+  final mapController = MapController();
+  final double zoom = 16;
 
   @override
-  State<StatefulWidget> createState() => _StreetMapState();
-}
-
-class _StreetMapState extends State<StreetMap> {
-  LatLng? location;
-
-  @override
-  initState() {
-    super.initState();
-
-    getLocationStream()
-        .then((stream) => {
-              stream.listen((currentLocation) {
-                setState(() {
-                  location = currentLocation;
-                  print('lat: ${currentLocation.latitude}, long: ${currentLocation.longitude}');
+  Widget build(BuildContext context) => FlutterMap(
+        mapController: mapController,
+        options: MapOptions(
+          keepAlive: true,
+          maxZoom: 22,
+          onMapReady: () {
+            getLocationStream().catchError((error, stackTrace) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(error.toString())));
+              return const Stream<LatLng>.empty();
+            }).then((stream) => {
+                  stream.listen((location) {
+                    mapController.move(location, zoom);
+                  })
                 });
-              })
-            })
-        .catchError((error, stackTrace) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error.toString())));
-        }); // todo: handle error properly
-
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FlutterMap(
-      options: MapOptions(
-        center: location,
-        zoom: 9.2,
-      ),
-      children: [
-        TileLayer(
-          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.example.app',
+          },
         ),
-      ],
-    );
-  }
+        children: [
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'gpx-navigator',
+          ),
+        ],
+      );
 }
